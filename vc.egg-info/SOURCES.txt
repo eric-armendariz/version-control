@@ -1,0 +1,7 @@
+setup.py
+vc/cli.py
+vc.egg-info/PKG-INFO
+vc.egg-info/SOURCES.txt
+vc.egg-info/dependency_links.txt
+vc.egg-info/entry_points.txt
+vc.egg-info/top_level.txt
