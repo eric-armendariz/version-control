@@ -62,13 +62,24 @@ def parse_args():
     
     branch_parser = commands.add_parser('branch')
     branch_parser.set_defaults(func=branch)
-    branch_parser.add_argument('name')
+    branch_parser.add_argument('name', nargs='?')
     branch_parser.add_argument('start_point', default='@', type=oid, nargs='?')
+    
+    status_parser = commands.add_parser('status')
+    status_parser.set_defaults(func=status)
+    
+    reset_parser = commands.add_parser('reset')
+    reset_parser.set_defaults(func=reset)
+    reset_parser.add_argument('commit', type=oid)
+    
+    show_parser = commands.add_parser('show')
+    show_parser.set_defaults(func=show)
+    show_parser.add_argument('oid', default='@', type=oid, nargs='?')
     
     return parser.parse_args()
 
 def init(args):
-    data.init()
+    base.init()
     print(f'Initialized empty VC repository in {os.getcwd()}/{data.GIT_DIR}')
     
 def pull(args):
@@ -92,12 +103,13 @@ def commit(args):
     print(base.commit(args.message))
     
 def log(args):
+    refs = {}
+    for refname, ref in data.iter_refs():
+        refs.setdefault(ref.value, []).append(refname)
+    
     for oid in base.iter_commits_and_parents({args.oid}):
         commit = base.get_commit(oid)
-        
-        print(f'commit {oid}\n')
-        print(textwrap.indent(commit.message, '    '))
-        print('')
+        _print_commit(oid, commit, refs.get(oid))
         
 def checkout(args):
     base.checkout(args.commit)
@@ -131,5 +143,34 @@ def k(args):
         #proc.communicate(dot.encode())
 
 def branch(args):
-    base.create_branch(args.name, args.start_point)
-    print(f'Branch {args.name} created at {args.start_point[:10]}')
+    if not args.name:
+        current = base.get_branch_name()
+        for branch in base.iter_branch_names():
+            prefix = '*' if branch == current else ' '
+            print(f'{prefix} {branch}')
+    else:
+        base.create_branch(args.name, args.start_point)
+        print(f'Branch {args.name} created at {args.start_point[:10]}')
+    
+def status(args):
+    HEAD = base.get_oid('@')
+    branch = base.get_branch_name()
+    if branch:
+        print(f'On branch {branch}')
+    else:
+        print(f'HEAD detached at {HEAD[:10]}')
+        
+def reset(args):
+    base.reset(args.commit)
+    
+def show(args):
+    if not args.oid:
+        return
+    commit = base.get_commit(args.oid)
+    _print_commit(args.oid, commit)
+    
+def _print_commit(oid, commit, refs=None):
+    refs_str = f' ({", ".join (refs)})' if refs else ''
+    print(f'commit {oid}{refs_str}\n')
+    print(textwrap.indent(commit.message, '     '))
+    print('')

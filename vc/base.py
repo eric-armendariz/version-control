@@ -6,6 +6,10 @@ import string
 from collections import deque, namedtuple
 from . import data
 
+def init():
+    data.init()
+    data.update_ref('HEAD', data.RefValue(symbolic=True, value='refs/heads/master'))
+
 def write_tree(directory='.'):
     #Scan directory and store files
     entries = []
@@ -172,3 +176,18 @@ def iter_commits_and_parents(oids):
         
 def create_branch(name, oid):
     data.update_ref(f'refs/heads/{name}', data.RefValue(symbolic=False, value=oid))
+    
+def get_branch_name():
+    HEAD = data.get_ref('HEAD', deref=False)
+    if not HEAD.symbolic:
+        return None
+    HEAD = HEAD.value
+    assert HEAD.startswith('refs/heads/')
+    return os.path.relpath(HEAD, 'refs/heads')
+
+def iter_branch_names():
+    for refname, _ in data.iter_refs('refs/heads/'):
+        yield os.path.relpath(refname, 'refs/heads/')
+
+def reset(oid):
+    data.update_ref('HEAD', data.RefValue(symbolic=False, value=oid))
